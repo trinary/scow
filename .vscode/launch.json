@@ -7,10 +7,12 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Cargo launch",
+            "name": "Cargo launch server",
             "cargo": {
                 "args": [
                     "build",
+                    "--lib",
+                    "--bins"
                 ]
             },
             "args": []

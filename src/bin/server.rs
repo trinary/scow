@@ -6,12 +6,10 @@ use scow::protocol::{Connection};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let _args: Vec<String> = env::args().collect();
-    //let port: i32 = args[1].parse::<i32>().unwrap();
-
     let listener = TcpListener::bind("127.0.0.1:9999").await?;
     loop {
         let (socket, _) = listener.accept().await.unwrap();
+        println!("OH SHIT WHATUP");
         process(socket).await;
     }
 }
