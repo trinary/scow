@@ -1,5 +1,4 @@
 use std::io;
-use std::env;
 use tokio::net::{TcpListener, TcpStream};
 
 use scow::protocol::{Connection};
@@ -7,6 +6,7 @@ use scow::protocol::{Connection};
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:9999").await?;
+    println!("listening");
     loop {
         let (socket, _) = listener.accept().await.unwrap();
         println!("OH SHIT WHATUP");

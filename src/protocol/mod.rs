@@ -1,13 +1,14 @@
 use bytes::{Buf, BytesMut};
+use tokio::io::AsyncWriteExt;
 use std::io::Cursor;
 
 use tokio::io::AsyncReadExt;
 use tokio::io::BufWriter;
 use tokio::net::TcpStream;
 
-mod client;
-use crate::protocol::client::{Command, CmdError};
-use crate::protocol::client::Response;
+mod command;
+use crate::protocol::command::{Command, CmdError};
+use crate::protocol::command::Response;
 
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -29,6 +30,7 @@ impl Connection {
 
     pub async fn read_command(&mut self) -> Result<Option<Command>> {
         loop {
+            println!("read loop, state: {:?}", self.buffer);
             if let Some(cmd) = self.parse_command()? {
                 return Ok(Some(cmd));
             }
@@ -43,6 +45,7 @@ impl Connection {
     }
 
     fn parse_command(&mut self) -> Result<Option<Command>> {
+        println!("parse_command");
         let mut buf = Cursor::new(&self.buffer[..]);
         match Command::check(&mut buf) {
             Ok(_) => {
@@ -53,13 +56,20 @@ impl Connection {
                 Ok(Some(command))
             }
             Err(CmdError::Incomplete) => {
+                println!("server got incomplete from check");
                 Ok(None)
             }
-            Err(other) => Err("uhhhh what".into())
+            Err (_other) => Err("uhhhh what".into())
         }
     }
 
     pub async fn execute_command(command: Command) -> Result<Response> {
+        println!("server executing request: {:?}", command);
         Ok(Response::Success)
+    }
+
+    pub async fn write(&mut self, src: &str) -> std::io::Result<()> {
+        self.stream.write_all(src.as_bytes()).await?;
+        self.stream.flush().await
     }
 }
