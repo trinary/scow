@@ -6,6 +6,7 @@ use std::fmt;
 use std::string::FromUtf8Error;
 
 use bytes::Buf;
+use crate::connection::Error;
 
 #[derive(Clone, Debug)]
 pub enum Command {
@@ -16,8 +17,16 @@ pub enum Command {
 #[derive(Debug)]
 pub enum CmdError {
     Incomplete,
-    Other(crate::protocol::Error),
+    Other(Error),
 }
+
+#[derive(Clone, Debug)]
+pub enum Response {
+    Success,
+    Value(String),
+    Error(String),
+}
+
 
 impl std::error::Error for CmdError {}
 
@@ -100,11 +109,4 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], CmdError> {
     }
     
     Err(CmdError::Incomplete)
-}
-
-#[derive(Clone, Debug)]
-pub enum Response {
-    Success,
-    Value(String),
-    Error(String),
 }

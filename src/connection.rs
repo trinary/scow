@@ -6,10 +6,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::BufWriter;
 use tokio::net::TcpStream;
 
-mod command;
-use crate::protocol::command::{Command, CmdError};
-use crate::protocol::command::Response;
-
+use crate::command::{Command, CmdError, Response};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;

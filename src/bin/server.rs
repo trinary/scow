@@ -1,7 +1,8 @@
 use std::io;
 use tokio::net::{TcpListener, TcpStream};
 
-use scow::protocol::{Connection};
+use scow::connection::Connection;
+
 
 #[tokio::main]
 async fn main() -> io::Result<()> {

@@ -7,7 +7,7 @@ pub struct Entry {
 }
 
 pub enum ServerCommand {
-    AppendEntries([Entry]),
+    AppendEntries(Box<[Entry]>),
     RequestVote,
 }
 
