@@ -1,7 +1,6 @@
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use scow::client::Client;
-use scow::connection::Result;
 
 #[tokio::main]
 async fn main() {
