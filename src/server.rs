@@ -4,18 +4,18 @@ use tokio::time::{self, Duration};
 
 use std::future::Future;
 use std::sync::Arc;
-use std::collections::HashMap;
 
 use tracing::{debug, error, info};
 
 use crate::connection::{Connection, Result};
-use crate::handler::Handler;
+use crate::handler::{Db, DbDropGuard};
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
     let (notify_shutdown, _) = broadcast::channel(1);
     let (shutdown_complete_tx, shutdown_complete_rx) = mpsc::channel(1);
     let mut server = Server {
         tcp_listener,
+        db_holder: DbDropGuard::new(),
         limit_connections: Arc::new(Semaphore::new(100)),
         notify_shutdown,
         shutdown_complete_rx,
@@ -30,7 +30,7 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
             }
 
         }
-        _ = shutdown => {
+            _ = shutdown => {
             info!("shutdown");
         }
     }
@@ -39,6 +39,7 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
 #[derive(Debug)]
 struct Server {
     tcp_listener: TcpListener,
+    db_holder: DbDropGuard,
     limit_connections: Arc<Semaphore>,
     notify_shutdown: broadcast::Sender<()>,
     shutdown_complete_rx: mpsc::Receiver<()>,
@@ -48,6 +49,7 @@ struct Server {
 impl Server {
     async fn run(&mut self) -> Result<()> {
         info!("Accepting inbound connections");
+
         loop {
             let permit = self
                 .limit_connections
@@ -56,10 +58,8 @@ impl Server {
                 .await
                 .unwrap();
             let socket = self.accept().await?;
-            let db = HashMap::<String, String>::new();
-
             let mut handler = Handler {
-                db: db,
+                db: self.db_holder.db(),
                 connection: Connection::new(socket)
             };
         }
@@ -83,3 +83,12 @@ impl Server {
         }
     }
 }
+
+struct Handler {
+    pub db: Db,
+    pub connection: Connection,
+}
+
+impl Handler {
+    // TODO: this impl
+ }
