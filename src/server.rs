@@ -60,8 +60,16 @@ impl Server {
             let socket = self.accept().await?;
             let mut handler = Handler {
                 db: self.db_holder.db(),
-                connection: Connection::new(socket)
+                connection: Connection::new(socket),
+                shutdown: Shutdown::new(self.notify_shutdown.subscribe())
             };
+
+            tokio::spawn(async move {
+                if let Err(err) = handler.run().await {
+                    error!(cause = ?err, "connection error");
+                    drop(permit);
+                }
+            });
         }
     }
 
@@ -84,11 +92,43 @@ impl Server {
     }
 }
 
+pub(crate) struct Shutdown {
+    shutdown: bool,
+    notify: broadcast::Receiver<()>,
+}
+
+impl Shutdown {
+    pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
+        Shutdown { shutdown: false, notify: notify }
+    }
+    pub(crate) fn is_shutdown(&self) -> bool {
+        false
+    }
+}
+
 struct Handler {
-    pub db: Db,
-    pub connection: Connection,
+    db: Db,
+    connection: Connection,
+    shutdown: Shutdown,
 }
 
 impl Handler {
-    // TODO: this impl
+    async fn run(&mut self) -> crate::connection::Result<()> {
+        println!("in Handler#run, should have something on the wire");
+        while !self.shutdown.is_shutdown() {
+            let maybe_frame = tokio::select! {
+                res = self.connection.read_command() => res?
+            };
+
+            let cmd = match maybe_frame {
+                Some(cmd) => cmd,
+                None => {
+                    debug!("didn't get a command, returning from Handler#run");
+                    return Ok(())
+                }
+            };
+            debug!(?cmd);
+        }
+        Ok(())
+    }
  }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Notify};
-use crate::connection::Connection;
 
 
 #[derive(Debug, Clone)]
@@ -44,7 +43,7 @@ impl Db {
 
     pub(crate) fn set(&self, key: String, value: String) {
         let mut state = self.shared.state.lock().unwrap();
-        let prev = state.entries.insert(
+        let _prev = state.entries.insert(
             key, value
         );
     }

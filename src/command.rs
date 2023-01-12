@@ -58,13 +58,22 @@ impl From<FromUtf8Error> for CmdError {
 }
 
 impl Command {
-    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<(), CmdError> {
+    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<Option<Command>, CmdError> {
         println!("check");
         match get_u8(src)? {
             b'r' => {
                 println!("u8 read r command");
+                let line = get_line(src)?;
+                let linestr = match String::from_utf8(line.to_vec()) {
+                    Ok(v) => v,
+                    Err(e) => panic!("invalid utf-8 syntax in read cmd")
+                };
+                Ok(Some(Command::Read(linestr)))
+            },
+            b'w' => {
+                println!("u8 read w command");
                 get_line(src)?;
-                Ok(())
+                Ok(Some(Command::Write(String::from("bar"), String::from("baz"))))
             }
             other => {
                 println!("check - other = {}", other);
@@ -74,6 +83,7 @@ impl Command {
     }
 
     pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Command, CmdError> {
+        println!("parse");
         match get_u8(src)? {
             b'r' => { // TODO: DRY this out?
                 let line = get_line(src)?.to_vec();
