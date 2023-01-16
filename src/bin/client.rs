@@ -9,8 +9,12 @@ async fn main() {
     let _res = match Client::connect(&addr).await {
         Ok(mut cl) => {
             println!("connected!");
-            let val = cl.get("key").await;
-            val
+            let set_result = cl.set("key", "value").await;
+            println!("got a result from PUT: {:?}", set_result);
+            let get_result = cl.get("key").await;
+            println!("got a result from GET: {:?}", get_result);
+            
+            get_result
         },
         Err(e) => {
             println!("oh no: {:?}", e);

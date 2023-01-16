@@ -16,7 +16,14 @@ impl Client {
         println!("client writing GET command");
         self.connection.write(format!("r{}\r\n", key).as_str()).await?;
 
-        println!("client wrote. waiting on response.");
+        println!("client wrote GET. waiting on response.");
+        self.read_response().await
+    }
+
+    pub async fn set(&mut self, key: &str, val: &str) -> Result<()> {
+        println!("client wriring SET command");
+        self.connection.write(format!("w{} {}\r\n", key, val).as_str()).await?;
+        println!("client wrote SET. waiting on response.");
         self.read_response().await
     }
 

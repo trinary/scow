@@ -27,6 +27,16 @@ pub enum Response {
     Error(String),
 }
 
+impl std::fmt::Display for Response {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Response::Success => write!(f, "OK"),
+            Response::Value(s) => write!(f, "GET {}", s),
+            Response::Error(e) => write!(f, "ERR {}", e),
+        }
+    }
+}
+
 
 impl std::error::Error for CmdError {}
 
@@ -88,7 +98,15 @@ impl Command {
             b'r' => { // TODO: DRY this out?
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
+                println!("got read line off the wire: {}", string);
                 Ok(Command::Read(string))
+            }
+            b'w' => {
+                let line = get_line(src)?.to_vec();
+                let string = String::from_utf8(line)?;
+                println!("got write line off the wire: {}", string);
+                let (key, val) = string.split_once(' ').unwrap();
+                Ok(Command::Write(String::from(key), String::from(val)))
             }
             _ => unimplemented!(),
         }
@@ -120,3 +138,4 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], CmdError> {
     
     Err(CmdError::Incomplete)
 }
+

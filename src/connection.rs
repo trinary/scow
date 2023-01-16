@@ -50,19 +50,15 @@ impl Connection {
                 buf.set_position(0);
                 let command = Command::parse(&mut buf)?;
                 self.buffer.advance(len);
+                println!("server got a command from check/parse: {:?}", command);
                 Ok(Some(command))
             }
             Err(CmdError::Incomplete) => {
-                println!("server got incomplete from check");
+                println!("server got incomplete from check/parse");
                 Ok(None)
             }
             Err (_other) => Err("uhhhh what".into())
         }
-    }
-
-    pub async fn execute_command(command: Command) -> Result<Response> {
-        println!("server executing request: {:?}", command);
-        Ok(Response::Success)
     }
 
     pub async fn write(&mut self, src: &str) -> std::io::Result<()> {

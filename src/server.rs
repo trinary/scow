@@ -9,6 +9,7 @@ use tracing::{debug, error, info};
 
 use crate::connection::{Connection, Result};
 use crate::handler::{Db, DbDropGuard};
+use crate::command::{Command, Response};
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
     let (notify_shutdown, _) = broadcast::channel(1);
@@ -128,6 +129,17 @@ impl Handler {
                 }
             };
             debug!(?cmd);
+            let result = match cmd {
+                Command::Read(k) => {
+                    let read = self.db.get(&k);
+                    Response::Value(read.unwrap())
+                },
+                Command::Write(k, v) => {
+                    let write = self.db.set(k, v);
+                    Response::Success
+                }
+            };
+            self.connection.write(result.to_string().as_str()).await?;
         }
         Ok(())
     }
