@@ -57,7 +57,7 @@ impl Connection {
                 println!("server got incomplete from check/parse");
                 Ok(None)
             }
-            Err(other) => Err("got an 'other' error in connection#parse_command.".into()),
+            Err(_other) => Err("got an 'other' error in connection#parse_command".into()),
         }
     }
 

@@ -1,5 +1,5 @@
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{broadcast, mpsc, Semaphore};
+use tokio::sync::Semaphore;
 use tokio::time::{self, Duration};
 
 use std::future::Future;
@@ -12,15 +12,10 @@ use crate::connection::{Connection, Result};
 use crate::handler::{Db, DbDropGuard};
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
-    let (notify_shutdown, _) = broadcast::channel(1);
-    let (shutdown_complete_tx, shutdown_complete_rx) = mpsc::channel(1);
     let mut server = Server {
         tcp_listener,
         db_holder: DbDropGuard::new(),
         limit_connections: Arc::new(Semaphore::new(100)),
-        notify_shutdown,
-        shutdown_complete_rx,
-        shutdown_complete_tx,
     };
 
     tokio::select! {
@@ -42,9 +37,6 @@ struct Server {
     tcp_listener: TcpListener,
     db_holder: DbDropGuard,
     limit_connections: Arc<Semaphore>,
-    notify_shutdown: broadcast::Sender<()>,
-    shutdown_complete_rx: mpsc::Receiver<()>,
-    shutdown_complete_tx: mpsc::Sender<()>,
 }
 
 impl Server {
@@ -62,7 +54,7 @@ impl Server {
             let mut handler = Handler {
                 db: self.db_holder.db(),
                 connection: Connection::new(socket),
-                shutdown: Shutdown::new(self.notify_shutdown.subscribe()),
+                shutdown: Shutdown::new(),
             };
 
             tokio::spawn(async move {
@@ -95,18 +87,16 @@ impl Server {
 
 pub(crate) struct Shutdown {
     shutdown: bool,
-    notify: broadcast::Receiver<()>,
 }
 
 impl Shutdown {
-    pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
+    pub(crate) fn new() -> Shutdown {
         Shutdown {
             shutdown: false,
-            notify: notify,
         }
     }
     pub(crate) fn is_shutdown(&self) -> bool {
-        false
+        self.shutdown
     }
 }
 
@@ -138,7 +128,7 @@ impl Handler {
                     Response::Value(read.unwrap())
                 }
                 Command::Write(k, v) => {
-                    let write = self.db.set(k, v);
+                    let _write = self.db.set(k, v);
                     Response::Success
                 }
             };

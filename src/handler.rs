@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::Notify;
 
 #[derive(Debug, Clone)]
 pub(crate) struct DbDropGuard {
@@ -28,9 +27,7 @@ impl Db {
             shared: Arc::new(Shared {
                 state: Mutex::new(State {
                     entries: HashMap::new(),
-                    shutdown: false,
                 }),
-                background_task: Notify::new(),
             }),
         }
     }
@@ -49,11 +46,9 @@ impl Db {
 #[derive(Debug)]
 struct Shared {
     state: Mutex<State>,
-    background_task: Notify,
 }
 
 #[derive(Debug)]
 struct State {
     entries: HashMap<String, String>,
-    shutdown: bool,
 }

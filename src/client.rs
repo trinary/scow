@@ -54,9 +54,6 @@ impl Client {
                     println!("client read_response match got value(v): {:?}", v);
                     return Ok(());
                 }
-                _ => {
-                    println!("client read_response got something unexpected.");
-                }
             }
         }
     }

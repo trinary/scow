@@ -92,7 +92,7 @@ impl Command {
                 let line = get_line(src)?;
                 let linestr = match String::from_utf8(line.to_vec()) {
                     Ok(v) => v,
-                    Err(e) => panic!("invalid utf-8 syntax in read cmd"),
+                    Err(e) => panic!("invalid utf-8 syntax in read cmd: {:?}", e),
                 };
                 Ok(Some(Command::Read(linestr)))
             }
