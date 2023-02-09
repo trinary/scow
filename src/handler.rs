@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{Notify};
-
+use tokio::sync::Notify;
 
 #[derive(Debug, Clone)]
 pub(crate) struct DbDropGuard {
-    db: Db
+    db: Db,
 }
 
 impl DbDropGuard {
@@ -20,7 +19,7 @@ impl DbDropGuard {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Db {
-    shared: Arc<Shared>
+    shared: Arc<Shared>,
 }
 
 impl Db {
@@ -29,10 +28,10 @@ impl Db {
             shared: Arc::new(Shared {
                 state: Mutex::new(State {
                     entries: HashMap::new(),
-                    shutdown: false
+                    shutdown: false,
                 }),
                 background_task: Notify::new(),
-            })
+            }),
         }
     }
 
@@ -43,16 +42,14 @@ impl Db {
 
     pub(crate) fn set(&self, key: String, value: String) {
         let mut state = self.shared.state.lock().unwrap();
-        let _prev = state.entries.insert(
-            key, value
-        );
+        let _prev = state.entries.insert(key, value);
     }
 }
 
 #[derive(Debug)]
 struct Shared {
     state: Mutex<State>,
-    background_task: Notify
+    background_task: Notify,
 }
 
 #[derive(Debug)]

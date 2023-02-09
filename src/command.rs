@@ -1,12 +1,12 @@
 // put client commands here.
 // this is for stuff like reads, writes, info requests (get the leader's addr)
 
-use std::io::Cursor;
 use std::fmt;
+use std::io::Cursor;
 use std::string::FromUtf8Error;
 
-use bytes::Buf;
 use crate::connection::Error;
+use bytes::Buf;
 
 #[derive(Clone, Debug)]
 pub enum Command {
@@ -37,6 +37,22 @@ impl std::fmt::Display for Response {
     }
 }
 
+impl Response {
+    pub(crate) fn parse_response(src: &mut Cursor<&[u8]>) -> Result<Response, &'static str> {
+        println!("Response#parse_response, maybe about to crash lol");
+        if src.has_remaining() {   
+            match src.get_u8() {
+                b'O' => Ok(Response::Success),
+                b'G' => Ok(Response::Value(String::from("lol"))),
+                b'E' => Ok(Response::Error(String::from("error parsing response"))),
+                _ => Err("got unexpected data in Response#parse_response"),
+            }
+        } else {
+            println!("client cursor has no data");
+            Err("client cursor has no data.")
+        }
+    }
+}
 
 impl std::error::Error for CmdError {}
 
@@ -50,7 +66,7 @@ impl std::fmt::Display for CmdError {
 }
 
 impl From<&str> for CmdError {
-    fn from(src:&str) -> CmdError {
+    fn from(src: &str) -> CmdError {
         src.to_string().into()
     }
 }
@@ -62,7 +78,7 @@ impl From<String> for CmdError {
 }
 
 impl From<FromUtf8Error> for CmdError {
-    fn from(_src:FromUtf8Error) -> CmdError {
+    fn from(_src: FromUtf8Error) -> CmdError {
         "protocol error, invalid format (fromUtf8)".into()
     }
 }
@@ -76,14 +92,17 @@ impl Command {
                 let line = get_line(src)?;
                 let linestr = match String::from_utf8(line.to_vec()) {
                     Ok(v) => v,
-                    Err(e) => panic!("invalid utf-8 syntax in read cmd")
+                    Err(e) => panic!("invalid utf-8 syntax in read cmd"),
                 };
                 Ok(Some(Command::Read(linestr)))
-            },
+            }
             b'w' => {
                 println!("u8 read w command");
                 get_line(src)?;
-                Ok(Some(Command::Write(String::from("bar"), String::from("baz"))))
+                Ok(Some(Command::Write(
+                    String::from("bar"),
+                    String::from("baz"),
+                )))
             }
             other => {
                 println!("check - other = {}", other);
@@ -95,7 +114,8 @@ impl Command {
     pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Command, CmdError> {
         println!("parse");
         match get_u8(src)? {
-            b'r' => { // TODO: DRY this out?
+            b'r' => {
+                // TODO: DRY this out?
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
                 println!("got read line off the wire: {}", string);
@@ -135,7 +155,6 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], CmdError> {
             return Ok(&src.get_ref()[start..i]);
         }
     }
-    
+
     Err(CmdError::Incomplete)
 }
-

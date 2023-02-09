@@ -1,20 +1,20 @@
 use bytes::{Buf, BytesMut};
-use tokio::io::AsyncWriteExt;
 use std::io::Cursor;
+use tokio::io::AsyncWriteExt;
 
 use tokio::io::AsyncReadExt;
 use tokio::io::BufWriter;
 use tokio::net::TcpStream;
 
-use crate::command::{Command, CmdError, Response};
+use crate::command::{CmdError, Command};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub struct Connection {
-    stream: BufWriter<TcpStream>,
-    buffer: BytesMut,
+    pub stream: BufWriter<TcpStream>,
+    pub buffer: BytesMut,
 }
 
 impl Connection {
@@ -57,7 +57,7 @@ impl Connection {
                 println!("server got incomplete from check/parse");
                 Ok(None)
             }
-            Err (_other) => Err("uhhhh what".into())
+            Err(other) => Err("got an 'other' error in connection#parse_command.".into()),
         }
     }
 

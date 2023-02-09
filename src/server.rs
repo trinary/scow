@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use tracing::{debug, error, info};
 
+use crate::command::{Command, Response};
 use crate::connection::{Connection, Result};
 use crate::handler::{Db, DbDropGuard};
-use crate::command::{Command, Response};
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
     let (notify_shutdown, _) = broadcast::channel(1);
@@ -62,7 +62,7 @@ impl Server {
             let mut handler = Handler {
                 db: self.db_holder.db(),
                 connection: Connection::new(socket),
-                shutdown: Shutdown::new(self.notify_shutdown.subscribe())
+                shutdown: Shutdown::new(self.notify_shutdown.subscribe()),
             };
 
             tokio::spawn(async move {
@@ -100,7 +100,10 @@ pub(crate) struct Shutdown {
 
 impl Shutdown {
     pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
-        Shutdown { shutdown: false, notify: notify }
+        Shutdown {
+            shutdown: false,
+            notify: notify,
+        }
     }
     pub(crate) fn is_shutdown(&self) -> bool {
         false
@@ -125,7 +128,7 @@ impl Handler {
                 Some(cmd) => cmd,
                 None => {
                     debug!("didn't get a command, returning from Handler#run");
-                    return Ok(())
+                    return Ok(());
                 }
             };
             debug!(?cmd);
@@ -133,7 +136,7 @@ impl Handler {
                 Command::Read(k) => {
                     let read = self.db.get(&k);
                     Response::Value(read.unwrap())
-                },
+                }
                 Command::Write(k, v) => {
                     let write = self.db.set(k, v);
                     Response::Success
@@ -143,4 +146,4 @@ impl Handler {
         }
         Ok(())
     }
- }
+}
