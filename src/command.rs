@@ -9,9 +9,12 @@ use crate::connection::Error;
 use bytes::Buf;
 
 #[derive(Clone, Debug)]
-pub enum Command {
+pub enum Frame {
     Read(String),
     Write(String, String),
+    Success,
+    Value(String),
+    Error(String),
 }
 
 #[derive(Debug)]
@@ -20,36 +23,14 @@ pub enum CmdError {
     Other(Error),
 }
 
-#[derive(Clone, Debug)]
-pub enum Response {
-    Success,
-    Value(String),
-    Error(String),
-}
-
-impl std::fmt::Display for Response {
+impl std::fmt::Display for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Response::Success => write!(f, "OK"),
-            Response::Value(s) => write!(f, "GET {}", s),
-            Response::Error(e) => write!(f, "ERR {}", e),
-        }
-    }
-}
-
-impl Response {
-    pub(crate) fn parse_response(src: &mut Cursor<&[u8]>) -> Result<Response, &'static str> {
-        println!("Response#parse_response, maybe about to crash lol");
-        if src.has_remaining() {   
-            match src.get_u8() {
-                b'O' => Ok(Response::Success),
-                b'G' => Ok(Response::Value(String::from("lol"))),
-                b'E' => Ok(Response::Error(String::from("error parsing response"))),
-                _ => Err("got unexpected data in Response#parse_response"),
-            }
-        } else {
-            println!("client cursor has no data");
-            Err("client cursor has no data.")
+            Frame::Read(s) => write!(f, "READ {}", s),
+            Frame::Write(s, v) => write!(f, "WRITE {} {}", s, v),
+            Frame::Success => write!(f, "OK"),
+            Frame::Value(s) => write!(f, "GET {}", s),
+            Frame::Error(e) => write!(f, "ERR {}", e),
         }
     }
 }
@@ -83,8 +64,8 @@ impl From<FromUtf8Error> for CmdError {
     }
 }
 
-impl Command {
-    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<Option<Command>, CmdError> {
+impl Frame {
+    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<Option<Frame>, CmdError> {
         println!("check");
         match get_u8(src)? {
             b'r' => {
@@ -94,15 +75,12 @@ impl Command {
                     Ok(v) => v,
                     Err(e) => panic!("invalid utf-8 syntax in read cmd: {:?}", e),
                 };
-                Ok(Some(Command::Read(linestr)))
+                Ok(Some(Frame::Read(linestr)))
             }
             b'w' => {
                 println!("u8 read w command");
                 get_line(src)?;
-                Ok(Some(Command::Write(
-                    String::from("bar"),
-                    String::from("baz"),
-                )))
+                Ok(Some(Frame::Write(String::from("bar"), String::from("baz"))))
             }
             other => {
                 println!("check - other = {}", other);
@@ -111,7 +89,7 @@ impl Command {
         }
     }
 
-    pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Command, CmdError> {
+    pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, CmdError> {
         println!("parse");
         match get_u8(src)? {
             b'r' => {
@@ -119,14 +97,14 @@ impl Command {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
                 println!("got read line off the wire: {}", string);
-                Ok(Command::Read(string))
+                Ok(Frame::Read(string))
             }
             b'w' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
                 println!("got write line off the wire: {}", string);
                 let (key, val) = string.split_once(' ').unwrap();
-                Ok(Command::Write(String::from(key), String::from(val)))
+                Ok(Frame::Write(String::from(key), String::from(val)))
             }
             _ => unimplemented!(),
         }

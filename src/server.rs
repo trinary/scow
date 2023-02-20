@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use tracing::{debug, error, info};
 
-use crate::command::{Command, Response};
+use crate::command::{Frame};
 use crate::connection::{Connection, Result};
 use crate::handler::{Db, DbDropGuard};
 
@@ -91,9 +91,7 @@ pub(crate) struct Shutdown {
 
 impl Shutdown {
     pub(crate) fn new() -> Shutdown {
-        Shutdown {
-            shutdown: false,
-        }
+        Shutdown { shutdown: false }
     }
     pub(crate) fn is_shutdown(&self) -> bool {
         self.shutdown
@@ -114,23 +112,26 @@ impl Handler {
                 res = self.connection.read_command() => res?
             };
 
-            let cmd = match maybe_frame {
+            let frame = match maybe_frame {
                 Some(cmd) => cmd,
                 None => {
                     debug!("didn't get a command, returning from Handler#run");
                     return Ok(());
                 }
             };
-            debug!(?cmd);
-            let result = match cmd {
-                Command::Read(k) => {
+            debug!(?frame);
+            let result = match frame {
+                Frame::Read(k) => {
                     let read = self.db.get(&k);
-                    Response::Value(read.unwrap())
+                    Frame::Value(read.unwrap())
                 }
-                Command::Write(k, v) => {
+                Frame::Write(k, v) => {
                     let _write = self.db.set(k, v);
-                    Response::Success
+                    Frame::Success
                 }
+                Frame::Success => todo!(),
+                Frame::Value(_) => todo!(),
+                Frame::Error(_) => todo!(),
             };
             self.connection.write(result.to_string().as_str()).await?;
         }

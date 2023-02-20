@@ -6,7 +6,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::BufWriter;
 use tokio::net::TcpStream;
 
-use crate::command::{CmdError, Command};
+use crate::command::{CmdError, Frame};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -25,7 +25,7 @@ impl Connection {
         }
     }
 
-    pub async fn read_command(&mut self) -> Result<Option<Command>> {
+    pub async fn read_command(&mut self) -> Result<Option<Frame>> {
         loop {
             println!("read loop, state: {:?}", self.buffer);
             if let Some(cmd) = self.parse_command()? {
@@ -41,14 +41,14 @@ impl Connection {
         }
     }
 
-    fn parse_command(&mut self) -> Result<Option<Command>> {
+    fn parse_command(&mut self) -> Result<Option<Frame>> {
         println!("parse_command");
         let mut buf = Cursor::new(&self.buffer[..]);
-        match Command::check(&mut buf) {
+        match Frame::check(&mut buf) {
             Ok(_) => {
                 let len = buf.position() as usize;
                 buf.set_position(0);
-                let command = Command::parse(&mut buf)?;
+                let command = Frame::parse(&mut buf)?;
                 self.buffer.advance(len);
                 println!("server got a command from check/parse: {:?}", command);
                 Ok(Some(command))

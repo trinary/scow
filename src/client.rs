@@ -1,4 +1,4 @@
-use crate::command::Response;
+use crate::command::Frame;
 use crate::connection::{Connection, Result};
 use tokio::net::{TcpStream, ToSocketAddrs};
 
@@ -22,7 +22,7 @@ impl Client {
             .await?;
 
         println!("client wrote GET. waiting on response.");
-        self.read_response().await
+        self.read_response_frame().await
     }
 
     pub async fn set(&mut self, key: &str, val: &str) -> Result<()> {
@@ -31,27 +31,35 @@ impl Client {
             .write(format!("w{} {}\r\n", key, val).as_str())
             .await?;
         println!("client wrote SET. waiting on response.");
-        self.read_response().await
+        self.read_response_frame().await
     }
 
-    async fn read_response(&mut self) -> Result<()> {
+    async fn read_response_frame(&mut self) -> Result<()> {
         loop {
             println!("client read_response");
             let mut cursor = Cursor::new(&self.connection.buffer[..]);
             println!("client read_response made a cursor");
-            let response = Response::parse_response(&mut cursor)?;
+            let response = Frame::parse(&mut cursor)?;
             println!("got response data");
             match response {
-                Response::Success => {
+                Frame::Success => {
                     println!("client read_response match got Success");
                     return Ok(());
                 }
-                Response::Error(e) => {
+                Frame::Error(e) => {
                     println!("client read_response match got error(e): {:?}", e);
                     return Ok(());
                 }
-                Response::Value(v) => {
+                Frame::Value(v) => {
                     println!("client read_response match got value(v): {:?}", v);
+                    return Ok(());
+                }
+                Frame::Read(k) => {
+                    println!("client read_response match got read(k): {:?}", k);
+                    return Ok(());
+                }
+                Frame::Write(k, v) => {
+                    println!("client read_response match got write(k, v): {:?}, {:?}", k, v);
                     return Ok(());
                 }
             }
