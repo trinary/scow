@@ -37,11 +37,20 @@ impl Client {
     async fn read_response_frame(&mut self) -> Result<()> {
         loop {
             println!("client read_response");
-            let mut cursor = Cursor::new(&self.connection.buffer[..]);
-            println!("client read_response made a cursor");
-            let response = Frame::parse(&mut cursor)?;
-            println!("got response data");
-            match response {
+
+            let maybe_frame = tokio::select!{
+                res = self.connection.read_frame() => res?
+            };
+
+            let frame = match maybe_frame {
+                Some(frame) => frame,
+                None => {
+                    println!("didn't get a response frame?");
+                    todo!();
+                },
+            };
+            
+            match frame {
                 Frame::Success => {
                     println!("client read_response match got Success");
                     return Ok(());

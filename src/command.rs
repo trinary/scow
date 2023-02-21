@@ -79,8 +79,18 @@ impl Frame {
             }
             b'w' => {
                 println!("u8 read w command");
-                get_line(src)?;
+                let line = get_line(src)?;
                 Ok(Some(Frame::Write(String::from("bar"), String::from("baz"))))
+            }
+            b'O' => {
+                println!("u8 read O response");
+                get_line(src)?;
+                Ok(Some(Frame::Success))
+            }
+            b'G' => {
+                println!("u8 read G response");
+                get_line(src)?;
+                Ok(Some(Frame::Value(String::from("command check G response"))))
             }
             other => {
                 println!("check - other = {}", other);

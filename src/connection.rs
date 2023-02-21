@@ -25,10 +25,10 @@ impl Connection {
         }
     }
 
-    pub async fn read_command(&mut self) -> Result<Option<Frame>> {
+    pub async fn read_frame(&mut self) -> Result<Option<Frame>> {
         loop {
             println!("read loop, state: {:?}", self.buffer);
-            if let Some(cmd) = self.parse_command()? {
+            if let Some(cmd) = self.parse_frame()? {
                 return Ok(Some(cmd));
             }
             if 0 == self.stream.read_buf(&mut self.buffer).await? {
@@ -41,8 +41,8 @@ impl Connection {
         }
     }
 
-    fn parse_command(&mut self) -> Result<Option<Frame>> {
-        println!("parse_command");
+    fn parse_frame(&mut self) -> Result<Option<Frame>> {
+        println!("parse_frame");
         let mut buf = Cursor::new(&self.buffer[..]);
         match Frame::check(&mut buf) {
             Ok(_) => {
@@ -50,14 +50,18 @@ impl Connection {
                 buf.set_position(0);
                 let command = Frame::parse(&mut buf)?;
                 self.buffer.advance(len);
-                println!("server got a command from check/parse: {:?}", command);
+                println!("got a command from check: {:?}", command);
                 Ok(Some(command))
             }
             Err(CmdError::Incomplete) => {
-                println!("server got incomplete from check/parse");
+                println!("got incomplete from check");
                 Ok(None)
             }
-            Err(_other) => Err("got an 'other' error in connection#parse_command".into()),
+            Err(other) => Err(format!(
+                "got an 'other' error in connection#parse_command: {:?}",
+                other
+            )
+            .into()),
         }
     }
 

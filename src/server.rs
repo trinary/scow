@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use tracing::{debug, error, info};
 
-use crate::command::{Frame};
+use crate::command::Frame;
 use crate::connection::{Connection, Result};
 use crate::handler::{Db, DbDropGuard};
 
@@ -108,8 +108,17 @@ impl Handler {
     async fn run(&mut self) -> crate::connection::Result<()> {
         println!("in Handler#run, should have something on the wire");
         while !self.shutdown.is_shutdown() {
+
+            // TODO should make this kind of stuff part of the frame or connection types
+            // maybe add some kind of more specific command and response-handling hook
+            // like a handler for each type of command for server side, handler for each type of response for client
+
+            // though
+
+            // all commands and responses being in the same frame type is a little weird?
+            // should frame be union of a single command OR a single response? 
             let maybe_frame = tokio::select! {
-                res = self.connection.read_command() => res?
+                res = self.connection.read_frame() => res?
             };
 
             let frame = match maybe_frame {
@@ -129,8 +138,12 @@ impl Handler {
                     let _write = self.db.set(k, v);
                     Frame::Success
                 }
-                Frame::Success => todo!(),
-                Frame::Value(_) => todo!(),
+                Frame::Success => {
+                    Frame::Success
+                },
+                Frame::Value(_) => {
+                    todo!()
+                },
                 Frame::Error(_) => todo!(),
             };
             self.connection.write(result.to_string().as_str()).await?;
