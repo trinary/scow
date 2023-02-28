@@ -1,8 +1,7 @@
 use crate::command::Frame;
 use crate::connection::{Connection, Result};
 use tokio::net::{TcpStream, ToSocketAddrs};
-
-use std::io::Cursor;
+use tracing::debug;
 
 pub struct Client {
     connection: Connection,
@@ -15,63 +14,67 @@ impl Client {
         Ok(Client { connection })
     }
 
-    pub async fn get(&mut self, key: &str) -> Result<()> {
-        println!("client writing GET command");
+    pub async fn get(&mut self, key: &str) -> Result<Frame> {
+        debug!("client writing GET command");
         self.connection
             .write(format!("r{}\r\n", key).as_str())
             .await?;
 
-        println!("client wrote GET. waiting on response.");
+        debug!("client wrote GET. waiting on response.");
         self.read_response_frame().await
     }
 
-    pub async fn set(&mut self, key: &str, val: &str) -> Result<()> {
-        println!("client writing SET command");
+    pub async fn set(&mut self, key: &str, val: &str) -> Result<Frame> {
+        debug!("client writing SET command");
         self.connection
             .write(format!("w{} {}\r\n", key, val).as_str())
             .await?;
-        println!("client wrote SET. waiting on response.");
+        debug!("client wrote SET. waiting on response.");
         self.read_response_frame().await
     }
 
-    async fn read_response_frame(&mut self) -> Result<()> {
+    async fn read_response_frame(&mut self) -> Result<Frame> {
         loop {
-            println!("client read_response");
+            debug!("client read_response");
 
-            let maybe_frame = tokio::select!{
+            let maybe_frame = tokio::select! {
                 res = self.connection.read_frame() => res?
             };
 
             let frame = match maybe_frame {
                 Some(frame) => frame,
                 None => {
-                    println!("didn't get a response frame?");
+                    debug!("didn't get a response frame?");
                     todo!();
-                },
+                }
             };
-            
-            match frame {
-                Frame::Success => {
-                    println!("client read_response match got Success");
-                    return Ok(());
-                }
-                Frame::Error(e) => {
-                    println!("client read_response match got error(e): {:?}", e);
-                    return Ok(());
-                }
-                Frame::Value(v) => {
-                    println!("client read_response match got value(v): {:?}", v);
-                    return Ok(());
-                }
-                Frame::Read(k) => {
-                    println!("client read_response match got read(k): {:?}", k);
-                    return Ok(());
-                }
-                Frame::Write(k, v) => {
-                    println!("client read_response match got write(k, v): {:?}, {:?}", k, v);
-                    return Ok(());
-                }
-            }
+
+            return Ok(frame);
+            // match frame {
+            //     Frame::Success => {
+            //         println!("client read_response match got Success");
+            //         return Ok(frame);
+            //     }
+            //     Frame::Error(e) => {
+            //         println!("client read_response match got error(e): {:?}", e);
+            //         return Ok(frame);
+            //     }
+            //     Frame::Value(v) => {
+            //         println!("client read_response match got value(v): {:?}", v);
+            //         return Ok(frame);
+            //     }
+            //     Frame::Read(k) => {
+            //         println!("client read_response match got read(k): {:?}", k);
+            //         return Ok(frame);
+            //     }
+            //     Frame::Write(k, v) => {
+            //         println!(
+            //             "client read_response match got write(k, v): {:?}, {:?}",
+            //             k, v
+            //         );
+            //         return Ok(frame);
+            //     }
+            // }
         }
     }
 }

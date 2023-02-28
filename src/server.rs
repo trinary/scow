@@ -20,7 +20,7 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
 
     tokio::select! {
         res = server.run() => {
-            println!("got to server.run?");
+            debug!("got to server.run?");
             if let Err(err) = res {
                 error!(cause = %err, "failed to accept");
             }
@@ -106,9 +106,8 @@ struct Handler {
 
 impl Handler {
     async fn run(&mut self) -> crate::connection::Result<()> {
-        println!("in Handler#run, should have something on the wire");
+        debug!("in Handler#run, should have something on the wire");
         while !self.shutdown.is_shutdown() {
-
             // TODO should make this kind of stuff part of the frame or connection types
             // maybe add some kind of more specific command and response-handling hook
             // like a handler for each type of command for server side, handler for each type of response for client
@@ -116,7 +115,7 @@ impl Handler {
             // though
 
             // all commands and responses being in the same frame type is a little weird?
-            // should frame be union of a single command OR a single response? 
+            // should frame be union of a single command OR a single response?
             let maybe_frame = tokio::select! {
                 res = self.connection.read_frame() => res?
             };
@@ -138,12 +137,10 @@ impl Handler {
                     let _write = self.db.set(k, v);
                     Frame::Success
                 }
-                Frame::Success => {
-                    Frame::Success
-                },
+                Frame::Success => Frame::Success,
                 Frame::Value(_) => {
                     todo!()
-                },
+                }
                 Frame::Error(_) => todo!(),
             };
             let response = result.to_string();

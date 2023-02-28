@@ -1,6 +1,7 @@
 use bytes::{Buf, BytesMut};
 use std::io::Cursor;
 use tokio::io::AsyncWriteExt;
+use tracing::debug;
 
 use tokio::io::AsyncReadExt;
 use tokio::io::BufWriter;
@@ -27,7 +28,7 @@ impl Connection {
 
     pub async fn read_frame(&mut self) -> Result<Option<Frame>> {
         loop {
-            println!("read loop, state: {:?}", self.buffer);
+            debug!("read loop, state: {:?}", self.buffer);
             if let Some(cmd) = self.parse_frame()? {
                 return Ok(Some(cmd));
             }
@@ -42,7 +43,7 @@ impl Connection {
     }
 
     fn parse_frame(&mut self) -> Result<Option<Frame>> {
-        println!("parse_frame");
+        debug!("parse_frame");
         let mut buf = Cursor::new(&self.buffer[..]);
         match Frame::check(&mut buf) {
             Ok(_) => {
@@ -50,11 +51,11 @@ impl Connection {
                 buf.set_position(0);
                 let command = Frame::parse(&mut buf)?;
                 self.buffer.advance(len);
-                println!("got a command from check: {:?}", command);
+                debug!("got a command from check: {:?}", command);
                 Ok(Some(command))
             }
             Err(CmdError::Incomplete) => {
-                println!("got incomplete from check");
+                debug!("got incomplete from check");
                 Ok(None)
             }
             Err(other) => Err(format!(

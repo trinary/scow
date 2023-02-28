@@ -7,6 +7,7 @@ use std::string::FromUtf8Error;
 
 use crate::connection::Error;
 use bytes::Buf;
+use tracing::debug;
 
 #[derive(Clone, Debug)]
 pub enum Frame {
@@ -66,10 +67,10 @@ impl From<FromUtf8Error> for CmdError {
 
 impl Frame {
     pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<Option<Frame>, CmdError> {
-        println!("check");
+        debug!("check");
         match get_u8(src)? {
             b'r' => {
-                println!("u8 read r command");
+                debug!("u8 read r command");
                 let line = get_line(src)?;
                 let linestr = match String::from_utf8(line.to_vec()) {
                     Ok(v) => v,
@@ -78,76 +79,76 @@ impl Frame {
                 Ok(Some(Frame::Read(linestr)))
             }
             b'w' => {
-                println!("u8 read w command");
+                debug!("u8 read w command");
                 let line = get_line(src)?;
                 Ok(Some(Frame::Write(String::from("bar"), String::from("baz"))))
             }
             b'O' => {
-                println!("u8 read O response");
+                debug!("u8 read O response");
                 get_line(src)?;
                 Ok(Some(Frame::Success))
             }
             b'G' => {
-                println!("u8 read G response");
+                debug!("u8 read G response");
                 get_line(src)?;
                 Ok(Some(Frame::Value(String::from("command check G response"))))
             }
             other => {
-                println!("check - other = {}", other);
+                debug!("check - other = {}", other);
                 Err(format!("protocol error, unexpected byte `{}`", other).into())
             }
         }
     }
 
     pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, CmdError> {
-        println!("parse");
+        debug!("parse");
         match get_u8(src)? {
             b'r' => {
                 // TODO: DRY this out?
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
-                println!("got read line off the wire: {}", string);
+                debug!("got read line off the wire: {}", string);
                 Ok(Frame::Read(string))
-            },
+            }
             b'w' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
-                println!("got write line off the wire: {}", string);
+                debug!("got write line off the wire: {}", string);
                 let (key, val) = string.split_once(' ').unwrap();
                 Ok(Frame::Write(String::from(key), String::from(val)))
-            },
+            }
             b'O' => {
                 // OK response
                 Ok(Frame::Success)
-            },
+            }
             b'G' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
-                println!("got read result line off the wire: {}", string);
-                let (one, _two) = string.split_once(' ').unwrap();
-                Ok(Frame::Value(String::from(one)))
+                debug!("got read result line off the wire: {}", string);
+                let (_, two) = string.split_once(' ').unwrap();
+                Ok(Frame::Value(String::from(two)))
             }
-            _ => unimplemented!("implement parse frame for this")
+            _ => unimplemented!("implement parse frame for this"),
         }
     }
 }
 
 fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, CmdError> {
-    println!("get_u8");
+    debug!("get_u8");
     if !src.has_remaining() {
-        println!("get_u8 has no remaining data, returning Incomplete.");
+        debug!("get_u8 has no remaining data, returning Incomplete.");
         return Err(CmdError::Incomplete);
     }
-    println!("get_u8 has_remaining()");
+    debug!("get_u8 has_remaining()");
     Ok(src.get_u8())
 }
 
 fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], CmdError> {
-    println!("get line");
+    debug!("get line");
     let start = src.position() as usize;
     let end = src.get_ref().len() - 1;
 
-    println!("start: {} end: {}", start, end);
+    debug!("start: {} end: {}", start, end);
     for i in start..end {
         if src.get_ref()[i] == b'\r' && src.get_ref()[i + 1] == b'\n' {
             src.set_position((i + 2) as u64);
