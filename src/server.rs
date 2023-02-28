@@ -146,7 +146,9 @@ impl Handler {
                 },
                 Frame::Error(_) => todo!(),
             };
-            self.connection.write(result.to_string().as_str()).await?;
+            let response = result.to_string();
+            println!("writing {} to the wire.", response);
+            self.connection.write(&response).await?;
         }
         Ok(())
     }

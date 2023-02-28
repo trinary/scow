@@ -26,11 +26,11 @@ pub enum CmdError {
 impl std::fmt::Display for Frame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Frame::Read(s) => write!(f, "READ {}", s),
-            Frame::Write(s, v) => write!(f, "WRITE {} {}", s, v),
-            Frame::Success => write!(f, "OK"),
-            Frame::Value(s) => write!(f, "GET {}", s),
-            Frame::Error(e) => write!(f, "ERR {}", e),
+            Frame::Read(s) => write!(f, "READ {}\r\n", s),
+            Frame::Write(s, v) => write!(f, "WRITE {} {}\r\n", s, v),
+            Frame::Success => write!(f, "OK\r\n"),
+            Frame::Value(s) => write!(f, "GET {}\r\n", s),
+            Frame::Error(e) => write!(f, "ERR {}\r\n", e),
         }
     }
 }
@@ -108,15 +108,26 @@ impl Frame {
                 let string = String::from_utf8(line)?;
                 println!("got read line off the wire: {}", string);
                 Ok(Frame::Read(string))
-            }
+            },
             b'w' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
                 println!("got write line off the wire: {}", string);
                 let (key, val) = string.split_once(' ').unwrap();
                 Ok(Frame::Write(String::from(key), String::from(val)))
+            },
+            b'O' => {
+                // OK response
+                Ok(Frame::Success)
+            },
+            b'G' => {
+                let line = get_line(src)?.to_vec();
+                let string = String::from_utf8(line)?;
+                println!("got read result line off the wire: {}", string);
+                let (one, _two) = string.split_once(' ').unwrap();
+                Ok(Frame::Value(String::from(one)))
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("implement parse frame for this")
         }
     }
 }
