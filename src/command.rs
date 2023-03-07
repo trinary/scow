@@ -9,7 +9,7 @@ use crate::connection::Error;
 use bytes::Buf;
 use tracing::debug;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Frame {
     Read(String),
     Write(String, String),
