@@ -51,7 +51,6 @@ impl Connection {
                 buf.set_position(0);
                 let command = Frame::parse(&mut buf)?;
                 self.buffer.advance(len);
-                debug!("got a command from check: {:?}", command);
                 Ok(Some(command))
             }
             Err(CmdError::Incomplete) => {

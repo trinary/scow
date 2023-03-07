@@ -131,7 +131,10 @@ impl Handler {
             let result = match frame {
                 Frame::Read(k) => {
                     let read = self.db.get(&k);
-                    Frame::Value(read.unwrap())
+                    match read {
+                        Some(v) => Frame::Value(v),
+                        None => Frame::Error(String::from("Key not found."))
+                    }
                 }
                 Frame::Write(k, v) => {
                     let _write = self.db.set(k, v);

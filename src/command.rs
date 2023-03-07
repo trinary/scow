@@ -66,32 +66,37 @@ impl From<FromUtf8Error> for CmdError {
 }
 
 impl Frame {
-    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<Option<Frame>, CmdError> {
+    pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<(), CmdError> {
         debug!("check");
         match get_u8(src)? {
             b'r' => {
                 debug!("u8 read r command");
                 let line = get_line(src)?;
-                let linestr = match String::from_utf8(line.to_vec()) {
+                let _linestr = match String::from_utf8(line.to_vec()) {
                     Ok(v) => v,
                     Err(e) => panic!("invalid utf-8 syntax in read cmd: {:?}", e),
                 };
-                Ok(Some(Frame::Read(linestr)))
+                Ok(())
             }
             b'w' => {
                 debug!("u8 read w command");
-                let line = get_line(src)?;
-                Ok(Some(Frame::Write(String::from("bar"), String::from("baz"))))
+                get_line(src)?;
+                Ok(())
             }
             b'O' => {
                 debug!("u8 read O response");
                 get_line(src)?;
-                Ok(Some(Frame::Success))
+                Ok(())
             }
             b'G' => {
                 debug!("u8 read G response");
                 get_line(src)?;
-                Ok(Some(Frame::Value(String::from("command check G response"))))
+                Ok(())
+            }
+            b'E' => {
+                debug!("u8 read E response");
+                get_line(src)?;
+                Ok(())
             }
             other => {
                 debug!("check - other = {}", other);
@@ -127,6 +132,13 @@ impl Frame {
                 debug!("got read result line off the wire: {}", string);
                 let (_, two) = string.split_once(' ').unwrap();
                 Ok(Frame::Value(String::from(two)))
+            }
+            b'E' => {
+                let line = get_line(src)?.to_vec();
+                let string = String::from_utf8(line)?;
+                debug!("got error line off the wire: {}", string);
+                let (_, msg) = string.split_once(' ').unwrap();
+                Ok(Frame::Error(String::from(msg)))
             }
             _ => unimplemented!("implement parse frame for this"),
         }
