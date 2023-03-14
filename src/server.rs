@@ -1,14 +1,16 @@
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
-use tokio::time::{self, Duration};
+use tokio::time;
 
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
 use tracing::{debug, error, info};
 
 use crate::command::Frame;
 use crate::connection::{Connection, Result};
+use crate::consensus::{ServerState, TermState};
 use crate::handler::{Db, DbDropGuard};
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
@@ -16,20 +18,28 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
         tcp_listener,
         db_holder: DbDropGuard::new(),
         limit_connections: Arc::new(Semaphore::new(100)),
+        server_state: ServerState::Follower,
     };
 
-    tokio::select! {
-        res = server.run() => {
-            debug!("got to server.run?");
-            if let Err(err) = res {
-                error!(cause = %err, "failed to accept");
-            }
+    let mut term_state = TermState::new();
 
-        }
-            _ = shutdown => {
-            info!("shutdown");
-        }
+    tokio::select! {
+     res = server.run() => {
+         debug!("got to server.run?");
+         if let Err(err) = res {
+             error!(cause = %err, "failed to accept");
+         }
+
+     },
+     heartbeat = term_state.heartbeat() => {
+         println!("heartbeat inside select?");
+     },
+
+     _ = shutdown => {
+         info!("shutdown");
+     },
     }
+
 }
 
 #[derive(Debug)]
@@ -37,6 +47,7 @@ struct Server {
     tcp_listener: TcpListener,
     db_holder: DbDropGuard,
     limit_connections: Arc<Semaphore>,
+    server_state: ServerState,
 }
 
 impl Server {
@@ -57,12 +68,15 @@ impl Server {
                 shutdown: Shutdown::new(),
             };
 
-            tokio::spawn(async move {
+            let handler = tokio::spawn(async move {
                 if let Err(err) = handler.run().await {
                     error!(cause = ?err, "connection error");
                     drop(permit);
                 }
             });
+
+            // let handler_result = handler.await;
+            // let heartbeat_result = heartbeat.await;
         }
     }
 
@@ -133,7 +147,7 @@ impl Handler {
                     let read = self.db.get(&k);
                     match read {
                         Some(v) => Frame::Value(v),
-                        None => Frame::Error(String::from("Key not found."))
+                        None => Frame::Error(String::from("Key not found.")),
                     }
                 }
                 Frame::Write(k, v) => {
