@@ -30,7 +30,7 @@ impl std::fmt::Display for Frame {
             Frame::Read(s) => write!(f, "READ {}\r\n", s),
             Frame::Write(s, v) => write!(f, "WRITE {} {}\r\n", s, v),
             Frame::Success => write!(f, "OK\r\n"),
-            Frame::Value(s) => write!(f, "GET {}\r\n", s),
+            Frame::Value(s) => write!(f, "VALUE {}\r\n", s),
             Frame::Error(e) => write!(f, "ERR {}\r\n", e),
         }
     }
@@ -69,8 +69,8 @@ impl Frame {
     pub(crate) fn check(src: &mut Cursor<&[u8]>) -> Result<(), CmdError> {
         debug!("check");
         match get_u8(src)? {
-            b'r' => {
-                debug!("u8 read r command");
+            b'R' => {
+                debug!("u8 read READ command");
                 let line = get_line(src)?;
                 let _linestr = match String::from_utf8(line.to_vec()) {
                     Ok(v) => v,
@@ -78,23 +78,23 @@ impl Frame {
                 };
                 Ok(())
             }
-            b'w' => {
-                debug!("u8 read w command");
+            b'W' => {
+                debug!("u8 read WRITE command");
                 get_line(src)?;
                 Ok(())
             }
             b'O' => {
-                debug!("u8 read O response");
+                debug!("u8 read OK response");
                 get_line(src)?;
                 Ok(())
             }
-            b'G' => {
-                debug!("u8 read G response");
+            b'V' => {
+                debug!("u8 read VALUE response");
                 get_line(src)?;
                 Ok(())
             }
             b'E' => {
-                debug!("u8 read E response");
+                debug!("u8 read ERR response");
                 get_line(src)?;
                 Ok(())
             }
@@ -108,25 +108,27 @@ impl Frame {
     pub(crate) fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, CmdError> {
         debug!("parse");
         match get_u8(src)? {
-            b'r' => {
+            b'R' => {
                 // TODO: DRY this out?
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
-                debug!("got read line off the wire: {}", string);
-                Ok(Frame::Read(string))
+                let (_cmd, key) = string.split_once(' ').unwrap();
+                Ok(Frame::Read(key.to_string()))
             }
-            b'w' => {
+            b'W' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
-                debug!("got write line off the wire: {}", string);
-                let (key, val) = string.split_once(' ').unwrap();
+                let mut split = string.split(' ');
+                let _cmd = split.next().expect("missing command from write split.");
+                let key = split.next().expect("missing key from write split.");
+                let val = split.next().expect("missing val from write split.");
                 Ok(Frame::Write(String::from(key), String::from(val)))
             }
             b'O' => {
                 // OK response
                 Ok(Frame::Success)
             }
-            b'G' => {
+            b'V' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
                 debug!("got read result line off the wire: {}", string);

@@ -8,11 +8,11 @@ async fn main() {
     let _res = match Client::connect(&addr).await {
         Ok(mut cl) => {
             println!("connected!");
-            let set_result = cl.set("key", "wheeee").await;
+            let set_result = cl.write("key", "wheeee").await;
             println!("got a result from PUT: {:?}", set_result);
-            let get_result = cl.get("key").await;
+            let get_result = cl.read("key").await;
             println!("got a result from GET: {:?}", get_result);
-            let get_missing_result = cl.get("missing").await;
+            let get_missing_result = cl.read("missing").await;
             println!(
                 "what happens when we get a missing val: {:?}",
                 get_missing_result

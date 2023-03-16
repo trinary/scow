@@ -34,6 +34,7 @@ impl Db {
 
     pub(crate) fn get(&self, key: &str) -> Option<String> {
         let state = self.shared.state.lock().unwrap();
+        println!("i have some keys: {:?}", state.entries.keys());
         state.entries.get(key).map(|entry| entry.clone())
     }
 

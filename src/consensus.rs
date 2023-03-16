@@ -86,10 +86,17 @@ impl TermState {
     }
 
     fn request_vote(&mut self) {
-        todo!("implement request vote.");
+      //  todo!("implement request vote.");
         println!("VOTE NOW WOOOO");
         for s in &self.servers {
             let addr = &s.address;
         }
     }
+
+    // // i don't know if this should go here :(
+    // fn create_clients(&mut self) {
+    //     for s in &self.servers {
+    //         let socket = 
+    //     }
+    // }
 }

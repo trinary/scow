@@ -9,10 +9,13 @@ async fn set_then_get() {
     let addr = start_server().await;
     let mut client = Client::connect(addr).await.unwrap();
 
-    let set_result = client.set("key", "testval").await.unwrap();
+    let set_result = client.write("key", "testval").await.unwrap();
     assert_eq!(set_result, Frame::Success);
 
-    let get_result = client.get("key").await.unwrap();
+    let set_results2 = client.write("key2", "testval2").await.unwrap();
+    assert_eq!(set_results2, Frame::Success);
+
+    let get_result = client.read("key").await.unwrap();
     assert_eq!(get_result, Frame::Value("testval".to_string()));
 }
 
@@ -21,7 +24,7 @@ async fn unknown_key() {
     let addr = start_server().await;
     let mut client = Client::connect(addr).await.unwrap();
 
-    let set_result = client.get("unknown").await.unwrap();
+    let set_result = client.read("unknown").await.unwrap();
     assert_eq!(set_result, Frame::Error("Key not found.".to_string()));
 }
 
