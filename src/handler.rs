@@ -21,12 +21,14 @@ pub(crate) struct Db {
     shared: Arc<Shared>,
 }
 
+
 impl Db {
     pub(crate) fn new() -> Db {
         Db {
             shared: Arc::new(Shared {
                 state: Mutex::new(State {
                     entries: HashMap::new(),
+                    servers: HashMap::new(),
                 }),
             }),
         }
@@ -42,6 +44,11 @@ impl Db {
         let mut state = self.shared.state.lock().unwrap();
         let _prev = state.entries.insert(key, value);
     }
+
+    pub(crate) fn add_server(&self, address: String, name: String) {
+        let mut state = self.shared.state.lock().unwrap();
+        state.servers.insert(address, name);
+    }
 }
 
 #[derive(Debug)]
@@ -52,4 +59,5 @@ struct Shared {
 #[derive(Debug)]
 struct State {
     entries: HashMap<String, String>,
+    servers: HashMap<String, String>,
 }

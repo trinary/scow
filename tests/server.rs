@@ -20,6 +20,21 @@ async fn set_then_get() {
 }
 
 #[tokio::test]
+async fn set_then_update() {
+    let addr = start_server().await;
+    let mut client = Client::connect(addr).await.unwrap();
+
+    let set_result = client.write("willupdate", "first val").await.unwrap();
+    assert_eq!(set_result, Frame::Success);
+
+    let set_result2 = client.write("willupdate", "second val").await.unwrap();
+    assert_eq!(set_result2, Frame::Success);
+
+    let get_result = client.read("willupdate").await.unwrap();
+    assert_eq!(get_result, Frame::Value("second val".to_string()));
+}
+
+#[tokio::test]
 async fn unknown_key() {
     let addr = start_server().await;
     let mut client = Client::connect(addr).await.unwrap();

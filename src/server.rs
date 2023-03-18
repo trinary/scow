@@ -6,12 +6,13 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tracing::{debug, error, info};
+use tracing::{event, Level, debug, error, info};
 
 use crate::command::Frame;
 use crate::connection::{Connection, Result};
 use crate::consensus::{ServerState, TermState};
 use crate::handler::{Db, DbDropGuard};
+
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
     let mut server = Server {
@@ -61,7 +62,9 @@ impl Server {
                 .acquire_owned()
                 .await
                 .unwrap();
+
             let socket = self.accept().await?;
+
             let mut handler = Handler {
                 db: self.db_holder.db(),
                 connection: Connection::new(socket),
@@ -75,8 +78,6 @@ impl Server {
                 }
             });
 
-            // let handler_result = handler.await;
-            // let heartbeat_result = heartbeat.await;
         }
     }
 
@@ -126,7 +127,6 @@ impl Handler {
             // maybe add some kind of more specific command and response-handling hook
             // like a handler for each type of command for server side, handler for each type of response for client
 
-            // though
 
             // all commands and responses being in the same frame type is a little weird?
             // should frame be union of a single command OR a single response?
@@ -155,7 +155,17 @@ impl Handler {
                     Frame::Success
                 }
                 Frame::Success => Frame::Success,
+                Frame::RequestVote => {
+                    todo!()
+                },
+                Frame::Vote(server) => {
+                    todo!()
+                },
+                Frame::AddServer(server) => {
+                    todo!()
+                },
                 Frame::Value(_) => {
+                    // servers dont' need to care about this type of frame, but we should handle it eventually
                     todo!()
                 }
                 Frame::Error(_) => todo!(),

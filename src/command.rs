@@ -16,6 +16,9 @@ pub enum Frame {
     Success,
     Value(String),
     Error(String),
+    RequestVote,
+    Vote(String),
+    AddServer(String),
 }
 
 #[derive(Debug)]
@@ -32,6 +35,9 @@ impl std::fmt::Display for Frame {
             Frame::Success => write!(f, "OK\r\n"),
             Frame::Value(s) => write!(f, "VALUE {}\r\n", s),
             Frame::Error(e) => write!(f, "ERR {}\r\n", e),
+            Frame::RequestVote => write!(f, "REQVOTE\r\n"),
+            Frame::Vote(s) => write!(f, "VOTE {}\r\n", s),
+            Frame::AddServer(s) => write!(f, "ADDSERVER {}\r\n", s),
         }
     }
 }
@@ -121,8 +127,8 @@ impl Frame {
                 let mut split = string.split(' ');
                 let _cmd = split.next().expect("missing command from write split.");
                 let key = split.next().expect("missing key from write split.");
-                let val = split.next().expect("missing val from write split.");
-                Ok(Frame::Write(String::from(key), String::from(val)))
+                let val = split.collect::<Vec<&str>>().join(" ");
+                Ok(Frame::Write(String::from(key), val))
             }
             b'O' => {
                 // OK response

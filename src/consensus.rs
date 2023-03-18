@@ -1,7 +1,7 @@
 // put consensus comamnds and data structures here.
 // this is for terms, leader elections, etc.
 
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
 pub struct Entry {
     key: String,
