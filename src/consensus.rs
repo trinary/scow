@@ -1,7 +1,7 @@
 // put consensus comamnds and data structures here.
 // this is for terms, leader elections, etc.
 
-use std::time::{Duration, SystemTime};
+use std::{time::{Duration, SystemTime}, net::{SocketAddrV4}};
 
 pub struct Entry {
     key: String,
@@ -21,18 +21,17 @@ pub enum ServerState {
 
 #[derive(Debug)]
 pub struct ServerId {
-    id: i32,
-    address: String,
+    id: u32,
+    address: SocketAddrV4,
 }
 
 #[derive(Debug)]
 pub struct TermState {
-    current_term: i128,
+    current_term: u64,
     server_state: ServerState,
     last_heartbeat: SystemTime,
     leader: Option<ServerId>,
-    interval: u64, // raft heartbeat in ms
-    servers: Vec<ServerId>,
+    heartbeat_interval: u64, // raft heartbeat in ms
 }
 
 
@@ -43,14 +42,13 @@ impl TermState {
             server_state: ServerState::Follower,
             last_heartbeat: SystemTime::UNIX_EPOCH,
             leader: None,
-            interval: 5000,
-            servers: vec![]
+            heartbeat_interval: 5000
         }
     }
 
     pub async fn heartbeat(&mut self) -> Result<(), String> {
         println!("heartbeat loop start");
-        let mut interval = tokio::time::interval(Duration::from_millis(self.interval));
+        let mut interval = tokio::time::interval(Duration::from_millis(self.heartbeat_interval));
 
         loop {
             interval.tick().await;
@@ -77,26 +75,8 @@ impl TermState {
             //   - vote for yourself
             //   - request votes from known servers
 
-                self.request_vote();
+                todo!("request vote");
             }
         }
-
-
-      
     }
-
-    fn request_vote(&mut self) {
-      //  todo!("implement request vote.");
-        println!("VOTE NOW WOOOO");
-        for s in &self.servers {
-            let addr = &s.address;
-        }
-    }
-
-    // // i don't know if this should go here :(
-    // fn create_clients(&mut self) {
-    //     for s in &self.servers {
-    //         let socket = 
-    //     }
-    // }
 }

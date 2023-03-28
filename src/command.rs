@@ -6,6 +6,7 @@ use std::io::Cursor;
 use std::string::FromUtf8Error;
 
 use crate::connection::Error;
+use crate::consensus::ServerId;
 use bytes::Buf;
 use tracing::debug;
 
@@ -19,6 +20,13 @@ pub enum Frame {
     RequestVote,
     Vote(String),
     AddServer(String),
+}
+
+#[derive(Debug)]
+pub struct RequestVoteArgs {
+    term: u64,
+    candidate_id: ServerId,
+    last_log: u64,
 }
 
 #[derive(Debug)]

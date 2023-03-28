@@ -10,16 +10,17 @@ use tracing::{event, Level, debug, error, info};
 
 use crate::command::Frame;
 use crate::connection::{Connection, Result};
-use crate::consensus::{ServerState, TermState};
+use crate::consensus::TermState;
 use crate::handler::{Db, DbDropGuard};
 
 
 pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
+
     let mut server = Server {
         tcp_listener,
         db_holder: DbDropGuard::new(),
         limit_connections: Arc::new(Semaphore::new(100)),
-        server_state: ServerState::Follower,
+        term_state: TermState::new(),
     };
 
     let mut term_state = TermState::new();
@@ -48,7 +49,7 @@ struct Server {
     tcp_listener: TcpListener,
     db_holder: DbDropGuard,
     limit_connections: Arc<Semaphore>,
-    server_state: ServerState,
+    term_state: TermState,
 }
 
 impl Server {
@@ -71,11 +72,18 @@ impl Server {
                 shutdown: Shutdown::new(),
             };
 
+            let mut term_state: TermState = TermState::new();
+
             let handler = tokio::spawn(async move {
                 if let Err(err) = handler.run().await {
                     error!(cause = ?err, "connection error");
                     drop(permit);
                 }
+                
+            });
+
+            let heartbeat = tokio::spawn(async move  {
+                term_state.heartbeat();
             });
 
         }
