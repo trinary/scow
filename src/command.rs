@@ -17,12 +17,11 @@ pub enum Frame {
     Success,
     Value(String),
     Error(String),
-    RequestVote,
+    RequestVote(RequestVoteArgs),
     Vote(String),
-    AddServer(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RequestVoteArgs {
     term: u64,
     candidate_id: ServerId,
@@ -43,9 +42,8 @@ impl std::fmt::Display for Frame {
             Frame::Success => write!(f, "OK\r\n"),
             Frame::Value(s) => write!(f, "VALUE {}\r\n", s),
             Frame::Error(e) => write!(f, "ERR {}\r\n", e),
-            Frame::RequestVote => write!(f, "REQVOTE\r\n"),
+            Frame::RequestVote(a ) => write!(f, "REQVOTE {} {} {}\r\n", a.term, a.candidate_id, a.last_log),
             Frame::Vote(s) => write!(f, "VOTE {}\r\n", s),
-            Frame::AddServer(s) => write!(f, "ADDSERVER {}\r\n", s),
         }
     }
 }

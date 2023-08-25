@@ -3,14 +3,15 @@ use tokio::sync::Semaphore;
 use tokio::time;
 
 use std::future::Future;
+use std::net::{SocketAddrV4, Ipv4Addr};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
-use tracing::{event, Level, debug, error, info};
+use tracing::{debug, error, info};
 
 use crate::command::Frame;
 use crate::connection::{Connection, Result};
-use crate::consensus::TermState;
+use crate::consensus::{TermState, ServerId};
 use crate::handler::{Db, DbDropGuard};
 
 
@@ -21,9 +22,9 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
         db_holder: DbDropGuard::new(),
         limit_connections: Arc::new(Semaphore::new(100)),
         term_state: TermState::new(),
+        last_heartbeat: SystemTime::UNIX_EPOCH,
+        heartbeat_interval: 5000
     };
-
-    let mut term_state = TermState::new();
 
     tokio::select! {
      res = server.run() => {
@@ -31,12 +32,7 @@ pub async fn run(tcp_listener: TcpListener, shutdown: impl Future) {
          if let Err(err) = res {
              error!(cause = %err, "failed to accept");
          }
-
      },
-     heartbeat = term_state.heartbeat() => {
-         println!("heartbeat inside select?");
-     },
-
      _ = shutdown => {
          info!("shutdown");
      },
@@ -50,11 +46,24 @@ struct Server {
     db_holder: DbDropGuard,
     limit_connections: Arc<Semaphore>,
     term_state: TermState,
+    heartbeat_interval: u64,
+    last_heartbeat: SystemTime,
 }
 
 impl Server {
     async fn run(&mut self) -> Result<()> {
         info!("Accepting inbound connections");
+
+        let servers = vec![
+            ServerId {
+                id: 0,
+                address: std::net::SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 9990)),
+            },
+            ServerId {
+                id: 1,
+                address: std::net::SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 9991)),
+            },
+        ];
 
         loop {
             let permit = self
@@ -72,9 +81,7 @@ impl Server {
                 shutdown: Shutdown::new(),
             };
 
-            let mut term_state: TermState = TermState::new();
-
-            let handler = tokio::spawn(async move {
+            tokio::spawn(async move {
                 if let Err(err) = handler.run().await {
                     error!(cause = ?err, "connection error");
                     drop(permit);
@@ -82,10 +89,9 @@ impl Server {
                 
             });
 
-            let heartbeat = tokio::spawn(async move  {
-                term_state.heartbeat();
+            tokio::spawn(async move {
+                
             });
-
         }
     }
 
@@ -106,6 +112,49 @@ impl Server {
             backoff *= 2;
         }
     }
+
+    // async fn heartbeat_loop(&mut self) -> () {
+    //     let heartbeat = tokio::spawn(async move  {
+    //         if let Err(err) = self.heartbeat().await {
+    //             error!(cause = ?err, "heartbeat error");
+    //         }
+    //     });
+    // }
+
+    pub async fn heartbeat(&mut self) -> Result<String> {
+        println!("heartbeat loop start");
+        let mut interval = tokio::time::interval(Duration::from_millis(self.heartbeat_interval));
+
+        loop {
+            interval.tick().await;
+            self.heartbeat_action().await;
+        }
+    }
+
+    async fn heartbeat_action(&mut self) {
+        // do the things here
+        println!("thump-thump");
+        let now = SystemTime::now();
+
+        // the algorithm:
+
+        // IF this server is not the leader
+        //   AND this server has not gotten a ping from the leader (within random timeout)
+
+        if self.term_state.server_state == crate::consensus::ServerState::Follower {
+            if self.last_heartbeat.elapsed().unwrap() > Duration::from_millis(250) {
+
+            // THEN 
+            //   - change state to candidate  
+            //   - increase term counter
+            //   - vote for yourself
+            //   - request votes from known servers
+
+                println!("request vote");
+            }
+        }
+    }
+
 }
 
 pub(crate) struct Shutdown {
@@ -130,6 +179,8 @@ struct Handler {
 impl Handler {
     async fn run(&mut self) -> crate::connection::Result<()> {
         debug!("in Handler#run, should have something on the wire");
+
+
         while !self.shutdown.is_shutdown() {
             // TODO should make this kind of stuff part of the frame or connection types
             // maybe add some kind of more specific command and response-handling hook
@@ -163,13 +214,10 @@ impl Handler {
                     Frame::Success
                 }
                 Frame::Success => Frame::Success,
-                Frame::RequestVote => {
+                Frame::RequestVote(_) => {
                     todo!()
                 },
                 Frame::Vote(server) => {
-                    todo!()
-                },
-                Frame::AddServer(server) => {
                     todo!()
                 },
                 Frame::Value(_) => {

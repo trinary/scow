@@ -1,17 +1,18 @@
 // put consensus comamnds and data structures here.
 // this is for terms, leader elections, etc.
 
-use std::{time::{Duration, SystemTime}, net::{SocketAddrV4}};
+use std::fmt::Display;
+use std::net::SocketAddr;
 
 pub struct Entry {
     key: String,
     value: String,
 }
 
-pub enum ServerCommand {
-    AppendEntries(Box<[Entry]>),
-    RequestVote,
-}
+// pub enum ServerCommand {
+//     AppendEntries(Box<[Entry]>),
+//     RequestVote,
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum ServerState {
@@ -19,64 +20,31 @@ pub enum ServerState {
     Follower,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ServerId {
-    id: u32,
-    address: SocketAddrV4,
+    pub id: u32,
+    pub address: SocketAddr,
+}
+
+impl Display for ServerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({} {})", self.id, self.address)
+    }
 }
 
 #[derive(Debug)]
 pub struct TermState {
-    current_term: u64,
-    server_state: ServerState,
-    last_heartbeat: SystemTime,
-    leader: Option<ServerId>,
-    heartbeat_interval: u64, // raft heartbeat in ms
+    pub current_term: u64,
+    pub server_state: ServerState,
+    pub leader: Option<ServerId>,
 }
-
 
 impl TermState {
     pub fn new() -> TermState {
         TermState {
             current_term: 0,
             server_state: ServerState::Follower,
-            last_heartbeat: SystemTime::UNIX_EPOCH,
             leader: None,
-            heartbeat_interval: 5000
-        }
-    }
-
-    pub async fn heartbeat(&mut self) -> Result<(), String> {
-        println!("heartbeat loop start");
-        let mut interval = tokio::time::interval(Duration::from_millis(self.heartbeat_interval));
-
-        loop {
-            interval.tick().await;
-            self.heartbeat_action().await;
-        }
-    }
-
-    async fn heartbeat_action(&mut self) {
-        // do the things here
-        println!("thump-thump");
-        let now = SystemTime::now();
-
-        // the algorithm:
-
-        // IF this server is not the leader
-        //   AND this server has not gotten a ping from the leader (within random timeout)
-
-        if self.server_state == ServerState::Follower {
-            if self.last_heartbeat.elapsed().unwrap() > Duration::from_millis(250) {
-
-            // THEN 
-            //   - change state to candidate  
-            //   - increase term counter
-            //   - vote for yourself
-            //   - request votes from known servers
-
-                todo!("request vote");
-            }
         }
     }
 }
